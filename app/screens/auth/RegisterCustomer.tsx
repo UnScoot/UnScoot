@@ -56,8 +56,14 @@ const RegisterCustomer = () => {
       }
       return;
     }
-    // Jika berhasil, tampilkan modal sukses
-    setShowSuccessModal(true);
+    // Jika berhasil, navigasi ke halaman konfirmasi email
+    router.push({
+      pathname: '/screens/auth/EmailConfirmation',
+      params: {
+        email: email,
+        role: 'customer'
+      }
+    });
   };
 
   return (

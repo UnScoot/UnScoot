@@ -36,17 +36,24 @@ const RegisterDriver = () => {
 		if (!result.success) {
 			// Tampilkan warning jika ada error (email/NIM sudah digunakan)
 			console.error("[RegisterDriver] Registration failed:", result.error);
-			if (result.error.toLowerCase().includes("email")) {
+			const errorMsg = result.error || "Terjadi kesalahan";
+			if (errorMsg.toLowerCase().includes("email")) {
 				showAlert("Email Sudah Digunakan", "Email ini sudah terdaftar. Silakan gunakan email lain.");
-			} else if (result.error.toLowerCase().includes("nim")) {
+			} else if (errorMsg.toLowerCase().includes("nim")) {
 				showAlert("NIM Sudah Digunakan", "NIM ini sudah digunakan untuk registrasi di aplikasi, baik sebagai customer maupun driver. Silakan gunakan NIM lain.");
 			} else {
-				showAlert("Gagal Daftar", result.error);
+				showAlert("Gagal Daftar", errorMsg);
 			}
 			return;
 		}
-		// Jika berhasil, tampilkan modal sukses
-		setShowSuccessModal(true);
+		// Jika berhasil, navigasi ke halaman konfirmasi email
+		router.push({
+			pathname: '/screens/auth/EmailConfirmation',
+			params: {
+				email: email,
+				role: 'driver'
+			}
+		});
 	};
 
 	return (
