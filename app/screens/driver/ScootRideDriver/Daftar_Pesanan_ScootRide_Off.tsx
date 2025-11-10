@@ -16,6 +16,15 @@ const Daftar_Pesanan_ScootRide_Off = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
+          {/* Back Button */}
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+
           {/* Header */}
           <Text style={styles.title}>DAFTAR PESANAN</Text>
         
@@ -56,6 +65,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backArrow: {
+    fontSize: 30,
+    color: "#016837",
+    fontWeight: "bold",
   },
   title: {
     fontSize: 22,

@@ -2,8 +2,8 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import * as React from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { deleteUserByEmail } from "../../../src/database/deleteUserByEmail";
 import { showAlert } from "../../../components/showAlert";
+import { deleteUserByEmail } from "../../../src/database/deleteUserByEmail";
 
 const EmailConfirmation = () => {
   const { email, role } = useLocalSearchParams();
