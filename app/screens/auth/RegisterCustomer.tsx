@@ -9,11 +9,9 @@ import { registerUserViaEdge } from "../../../src/database/registerUserViaEdge";
 
 const RegisterCustomer = () => {
   const [nama, setNama] = React.useState("");
-  const [jenisMotor, setJenisMotor] = React.useState("");
   const [nim, setNim] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [plat, setPlat] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
