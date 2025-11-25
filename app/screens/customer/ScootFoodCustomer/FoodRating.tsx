@@ -47,7 +47,7 @@ const FoodRating: React.FC = () => {
         {/* BUTTON KIRIM */}
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push('/screens/customer/ScootFood/FoodBackHome')}
+          onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodBackHome')}
         >
           <Text style={styles.buttonText}>Kirim</Text>
         </TouchableOpacity>

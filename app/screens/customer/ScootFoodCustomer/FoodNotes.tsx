@@ -15,7 +15,6 @@ const IPhone16Chat = () => {
   
   const currentLocation = params?.currentLocation || 'Lokasi saat ini';
   const restaurantLocation = params?.restaurantLocation || 'Lokasi resto';
-  const fare = params?.fare || 'Rp ...';
   
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([
     { id: '1', name: 'Ayam Geprek', quantity: '1' },
@@ -24,7 +23,6 @@ const IPhone16Chat = () => {
   ]);
   
   const [notes, setNotes] = React.useState('(ayam gepreknya pedas sedang, gak pakai kol)');
-  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   const updateOrderItem = (id: string, field: 'name' | 'quantity', value: string) => {
     setOrderItems(items =>
@@ -114,7 +112,7 @@ const IPhone16Chat = () => {
         <TouchableOpacity 
           style={styles.continueButton}
           onPress={() => router.push({
-            pathname: '/screens/customer/ScootFood/FoodMenungguDriver',
+            pathname: '/screens/customer/ScootFoodCustomer/FoodMenungguDriver',
             params: {
               orderItems: JSON.stringify(orderItems),
               notes: notes

@@ -35,7 +35,7 @@ const ReminderCekResto = () => {
           {/* Button */}
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => router.push('/screens/customer/ScootFood/FoodPilihLokasi')}
+            onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodPilihLokasi')}
           >
             <Text style={styles.buttonText}>Sudah Cek, Lanjut Pesan</Text>
           </TouchableOpacity>

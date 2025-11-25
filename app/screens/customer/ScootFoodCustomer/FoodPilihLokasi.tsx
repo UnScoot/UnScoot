@@ -23,7 +23,7 @@ const ScootFoodCustMemilihLokasi = () => {
     }
     
     router.push({
-      pathname: '/screens/customer/ScootFood/FoodNotes',
+      pathname: '/screens/customer/ScootFoodCustomer/FoodNotes',
       params: {
         currentLocation: currentLocation,
         restaurantLocation: restaurantLocation,

@@ -17,7 +17,7 @@ const ValidasiPesananSudahSampai: React.FC = () => {
 
         <Text style={styles.subtitle}>Klik tombol di bawah kalau makananmu{"\n"}udah kamu terima ya ☺️</Text>
 
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/screens/customer/ScootFood/FoodRating')}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodRating')}>
           <Text style={styles.buttonText}>Sudah</Text>
         </TouchableOpacity>
       </View>

@@ -14,7 +14,7 @@ const ChatScootFood: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   
-  const notes = params?.notes || '';
+  // notes are available via params when needed; avoid unused variable
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -26,7 +26,7 @@ const ChatScootFood: React.FC = () => {
       if (Array.isArray(raw)) return raw;
       if (typeof raw === 'object') return raw as any[];
       return [];
-    } catch (e) {
+    } catch {
       return [];
     }
   };
@@ -90,7 +90,7 @@ const ChatScootFood: React.FC = () => {
       </ScrollView>
 
       {/* TEST BUTTON: Coba Lanjut (navigates to FoodValidasi) */}
-      <TouchableOpacity style={styles.tryButton} onPress={() => router.push('/screens/customer/ScootFood/FoodValidasi')}>
+      <TouchableOpacity style={styles.tryButton} onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodValidasi')}>
         <Text style={styles.tryButtonText}>Coba Lanjut</Text>
       </TouchableOpacity>
 

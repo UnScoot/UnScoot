@@ -9,7 +9,7 @@ const FoodMendapatDriver = () => {
 
   const handleHubungi = () => {
     router.push({
-      pathname: '/screens/customer/ScootFood/FoodChat',
+      pathname: '/screens/customer/ScootFoodCustomer/FoodChat',
       params: {
         orderItems: params?.orderItems || '[]',
         notes: params?.notes || ''

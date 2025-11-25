@@ -9,7 +9,7 @@ const FoodMenungguDriver = () => {
   useFocusEffect(
     React.useCallback(() => {
       const timer = setTimeout(() => {
-        router.push('/screens/customer/ScootFood/FoodMendapatDriver');
+        router.push('/screens/customer/ScootFoodCustomer/FoodMendapatDriver');
       }, 2000);
       return () => clearTimeout(timer);
     }, [router])
@@ -35,7 +35,7 @@ const FoodMenungguDriver = () => {
 
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={() => router.push('/screens/customer/ScootFood/FoodPilihLokasi')}
+          onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodPilihLokasi')}
         >
           <Text style={styles.cancelButtonText}>Batalkan Pesanan</Text>
         </TouchableOpacity>
