@@ -29,9 +29,13 @@ const HalamanChat_Send_Driver = () => {
                     resizeMode="cover" 
                   />
                   <Text style={styles.customerName}>{customerName || "Customer"}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Antar</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.statusBadge}
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/screens/driver/ScootSendDriver/Qr_Send' as any)}
+                  >
+                    <Text style={styles.statusText}>Selesai</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Chat Messages Container */}
