@@ -14,6 +14,15 @@ const HomeCustomer = () => {
   );
   const [showPreview, setShowPreview] = React.useState(false);
 
+  const loadProfileImage = React.useCallback(async () => {
+    if (userId && typeof userId === 'string') {
+      const imageUrl = await getProfileImageUrl(userId, 'customer');
+      if (imageUrl) {
+        setCurrentImageUrl(imageUrl);
+      }
+    }
+  }, [userId]);
+
   // Handle tombol back Android - close app saat di Home
   useFocusEffect(
     React.useCallback(() => {
@@ -31,17 +40,8 @@ const HomeCustomer = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadProfileImage();
-    }, [userId])
+    }, [loadProfileImage])
   );
-
-  const loadProfileImage = async () => {
-    if (userId && typeof userId === 'string') {
-      const imageUrl = await getProfileImageUrl(userId, 'customer');
-      if (imageUrl) {
-        setCurrentImageUrl(imageUrl);
-      }
-    }
-  };
 
   const userParams = {
     nama: nama || '',
@@ -69,7 +69,10 @@ const HomeCustomer = () => {
 
 
   const handleScootFood = () => {
-    Alert.alert('ScootFood', 'Fitur ScootFood Customer sedang dalam pengembangan 🚧');
+    router.push({
+      pathname: '/screens/customer/ScootFoodCustomer/ReminderCekResto',
+      params: userParams
+    });
   };
 
   const handleScootSend = () => {

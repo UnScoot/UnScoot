@@ -17,6 +17,7 @@ const EditProfile_Customer = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadProfileImage();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId])
   );
 
@@ -64,7 +65,8 @@ const EditProfile_Customer = () => {
             try {
               await AsyncStorage.removeItem('userSession');
               router.replace('/screens/auth/Login');
-            } catch (error) {
+            } catch (err) {
+              console.error('Sign out error:', err);
               Alert.alert("Error", "Gagal sign out!");
             }
           }

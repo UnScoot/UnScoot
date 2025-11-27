@@ -14,6 +14,15 @@ const HomeDriver = () => {
   );
   const [showPreview, setShowPreview] = React.useState(false); // Modal preview foto
 
+  const loadProfileImage = React.useCallback(async () => {
+    if (userId && typeof userId === 'string') {
+      const imageUrl = await getProfileImageUrl(userId, 'driver');
+      if (imageUrl) {
+        setCurrentImageUrl(imageUrl);
+      }
+    }
+  }, [userId]);
+
   const scootRideImage = require('../../../assets/images/ScootRide.png');
   const scootFoodImage = require('../../../assets/images/ScootFood.png');
   const scootSendImage = require('../../../assets/images/ScootSend.png');
@@ -36,17 +45,9 @@ const HomeDriver = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadProfileImage();
-    }, [userId])
+    }, [loadProfileImage])
   );
 
-  const loadProfileImage = async () => {
-    if (userId && typeof userId === 'string') {
-      const imageUrl = await getProfileImageUrl(userId, 'driver');
-      if (imageUrl) {
-        setCurrentImageUrl(imageUrl);
-      }
-    }
-  };
 
   // Buat object params untuk pass ke semua screen
   const userParams = {

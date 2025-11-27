@@ -29,9 +29,12 @@ const HalamanChat_Food_Driver = () => {
                     resizeMode="cover" 
                   />
                   <Text style={styles.customerName}>{customerName || "Customer"}</Text>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Food</Text>
-                  </View>
+                  <TouchableOpacity 
+                    style={styles.statusBadge} 
+                    onPress={() => router.push("/screens/driver/ScootFoodDriver/Qr")}
+                  >
+                    <Text style={styles.statusText}>Selesai</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Chat Messages Container */}
