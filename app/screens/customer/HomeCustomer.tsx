@@ -56,8 +56,17 @@ const HomeCustomer = () => {
   const scootSendImage = require('../../../assets/images/ScootSend.png');
 
   const handleScootRide = () => {
-    Alert.alert('ScootRide', 'Fitur ScootRide Customer sedang dalam pengembangan 🚧');
+    try {
+      router.push({
+        pathname: '/screens/customer/ScootRideCustomer/PilihLokasi',
+        params: userParams, // ini biar data user juga ikut dikirim
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Error', 'Gagal membuka halaman ScootRide');
+    }
   };
+
 
   const handleScootFood = () => {
     Alert.alert('ScootFood', 'Fitur ScootFood Customer sedang dalam pengembangan 🚧');

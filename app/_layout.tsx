@@ -23,9 +23,15 @@ export default function RootLayout() {
         
         {/* Customer Screens */}
         <Stack.Screen name="screens/customer/HomeCustomer" options={{ headerShown: false }} />
-        
-        {/* Shared Screens */}
-        {/* <Stack.Screen name="screens/shared/Profile" options={{ headerShown: false }} /> */}
+
+        {/* 🚀 ScootRide Customer Screens */}
+        <Stack.Screen name="screens/customer/ScootRideCustomer/PilihLokasi" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/MenungguDriver" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/RideMendapatkanDriver" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/ChatScootRide" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/KonfirmasiSudahSampai" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/BeriRatingDriverRide" options={{ headerShown: false }} />
+        <Stack.Screen name="screens/customer/ScootRideCustomer/MisiBerhasil" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
