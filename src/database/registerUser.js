@@ -146,6 +146,25 @@ export async function registerUser({ nim, email, password, nama, jenisMotor, pla
       console.log(`[registerUser] Successfully inserted to ${table}`);
     }
     
+    // Tampilkan notifikasi lokal bahwa registrasi sukses
+    try {
+      // Muat modul notifikasi secara dinamis agar tidak menginisialisasi
+      // modul native saat app bundle sedang dimuat. Ini mengurangi risiko
+      // error "Cannot find native module 'ExpoPushTokenManager'" pada
+      // environment tanpa module native (mis. Expo Go).
+      const { default: notifikasiregister } = await import(
+        /* webpackChunkName: "notifikasiregister" */ "../notifications/notifikasiregister"
+      );
+
+      // Panggil dan tunggu (notifikasi mungkin menampilkan Alert sebagai fallback)
+      await notifikasiregister({
+        title: 'Registrasi Berhasil',
+        body: 'Akun Anda berhasil dibuat. Silakan cek email untuk verifikasi.'
+      });
+    } catch (e) {
+      console.warn('[registerUser] notifikasiregister failed:', e);
+    }
+
     return { user: data.user, needsEmailConfirmation: true };
   }
 
