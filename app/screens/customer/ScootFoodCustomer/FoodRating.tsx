@@ -1,20 +1,73 @@
-import { useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { updateOrderRating, getOrderById } from '../../../../src/database/chatScootFood';
 
 const FoodRating: React.FC = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const orderId = params.orderId as string;
+
   const [rating, setRating] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [driverName, setDriverName] = useState<string | null>(null);
+
+  // Load driver name
+  React.useEffect(() => {
+    const loadDriverName = async () => {
+      if (!orderId) return;
+
+      const result = await getOrderById(orderId);
+      if (result.success && result.data && Array.isArray(result.data) && result.data[0]?.nama) {
+        setDriverName(result.data[0].nama);
+      }
+    };
+
+    loadDriverName();
+  }, [orderId]);
+
+  const handleSubmitRating = async () => {
+    if (rating === 0) {
+      Alert.alert('Pilih Rating', 'Silakan pilih rating terlebih dahulu');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    if (orderId) {
+      console.log('[FoodRating] Submitting rating:', rating, 'for order:', orderId);
+
+      const result = await updateOrderRating(orderId, rating);
+
+      if (result.success) {
+        console.log('[FoodRating] ✅ Rating saved successfully');
+        router.push('/screens/customer/ScootFoodCustomer/FoodBackHome');
+      } else {
+        console.error('[FoodRating] Failed to save rating:', result.error);
+        Alert.alert('Error', 'Gagal menyimpan rating. Coba lagi.');
+        setIsSubmitting(false);
+      }
+    } else {
+      // No orderId - just navigate (demo mode)
+      router.push('/screens/customer/ScootFoodCustomer/FoodBackHome');
+    }
+  };
+
+  const handleExit = () => {
+    router.replace('/screens/customer/HomeCustomer');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
       <View style={styles.card}>
 
         {/* EXIT top-right */}
         <TouchableOpacity
           style={styles.exitTopRight}
-          onPress={() => router.replace('/screens/customer/HomeCustomer')}
+          onPress={handleExit}
         >
           <Image
             style={styles.exitIcon}
@@ -25,13 +78,15 @@ const FoodRating: React.FC = () => {
 
         <Text style={styles.subtitle}>
           Terima kasih udah pakai ScootFood!{"\n"}
-          Jangan lupa kasih rating buat driver kamu 😄
+          {driverName 
+            ? `Kasih rating buat ${driverName} ya 😄`
+            : 'Jangan lupa kasih rating buat driver kamu 😄'}
         </Text>
 
         {/* ⭐⭐⭐⭐⭐ RATING */}
         <View style={styles.starsRow}>
           {[1,2,3,4,5].map((num) => (
-            <TouchableOpacity key={num} onPress={() => setRating(num)}>
+            <TouchableOpacity key={num} onPress={() => setRating(num)} disabled={isSubmitting}>
               <Image
                 style={styles.star}
                 source={
@@ -46,14 +101,20 @@ const FoodRating: React.FC = () => {
 
         {/* BUTTON KIRIM */}
         <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodBackHome')}
+          style={[styles.button, isSubmitting && styles.buttonDisabled]}
+          onPress={handleSubmitRating}
+          disabled={isSubmitting}
         >
-          <Text style={styles.buttonText}>Kirim</Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Kirim</Text>
+          )}
         </TouchableOpacity>
         
       </View>
     </SafeAreaView>
+    </>
   );
 };
 
@@ -113,6 +174,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 26,
     elevation: 3,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+
+  buttonDisabled: {
+    backgroundColor: '#aaa',
   },
 
   buttonText: { 

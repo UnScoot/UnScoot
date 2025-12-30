@@ -3,6 +3,8 @@ import * as React from 'react';
 import { Alert, BackHandler, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProfileImageUrl } from '../../../src/database/uploadProfileImage';
+import { getActiveOrderForCustomer } from '../../../src/database/chatScootRide';
+import { getActiveOrderForCustomer as getActiveScootSendOrder } from '../../../src/database/chatScootSend';
 
 const HomeCustomer = () => {
   const { nama, nim, email, userId, profileImageUrl } = useLocalSearchParams();
@@ -55,11 +57,39 @@ const HomeCustomer = () => {
   const scootFoodImage = require('../../../assets/images/ScootFood.png');
   const scootSendImage = require('../../../assets/images/ScootSend.png');
 
-  const handleScootRide = () => {
+  const handleScootRide = async () => {
     try {
+      // Check if customer has active order
+      if (userId && typeof userId === 'string') {
+        const result: any = await getActiveOrderForCustomer(userId);
+
+        if (result && result.success && result.data) {
+          // Ada pesanan aktif, langsung ke chat
+          const order = result.data;
+          const driverName = order.driver?.nama || 'Driver';
+          const driverId = order.driver?.id || order.id_driver;
+
+          console.log('[HomeCustomer] Found active order, navigating to chat:', order.id);
+
+          router.push({
+            pathname: '/screens/customer/ScootRideCustomer/RideChat',
+            params: {
+              orderId: order.id,
+              userId: userId,
+              driverId: driverId,
+              driverName: driverName,
+              lokasiJemput: order.lokasi_jemput,
+              lokasiTujuan: order.lokasi_tujuan,
+            }
+          });
+          return;
+        }
+      }
+
+      // No active order, go to order screen
       router.push({
-        pathname: '/screens/customer/ScootRideCustomer/PilihLokasi',
-        params: userParams, // ini biar data user juga ikut dikirim
+        pathname: '/screens/customer/ScootRideCustomer/RidePilihLokasi',
+        params: userParams,
       });
     } catch (error) {
       console.error('Navigation error:', error);
@@ -68,15 +98,124 @@ const HomeCustomer = () => {
   };
 
 
-  const handleScootFood = () => {
-    router.push({
-      pathname: '/screens/customer/ScootFoodCustomer/ReminderCekResto',
-      params: userParams
-    });
+  const handleScootFood = async () => {
+    try {
+      // Import dynamically to avoid circular deps
+      const { getActiveOrderForCustomer } = await import('../../../src/scootFoodCustomer/scootFoodMemesan');
+
+      if (userId) {
+        const result = await getActiveOrderForCustomer(userId);
+
+        if (result.success && result.data) {
+          // Ada pesanan aktif - redirect ke halaman yang sesuai dengan status
+          const order = result.data;
+          console.log('[HomeCustomer] Active ScootFood order found:', order.id, 'status:', order.status);
+
+          if (order.status === 'pending') {
+            // Masih menunggu driver
+            router.push({
+              pathname: '/screens/customer/ScootFoodCustomer/FoodMenungguDriver',
+              params: {
+                orderId: order.id,
+                userId: userId,
+                nama: nama,
+                lokasiCustomer: order.lokasi_tujuan,
+                lokasiResto: order.lokasi_resto,
+                biaya: order.biaya,
+              }
+            });
+          } else if (['accepted', 'ongoing'].includes(order.status)) {
+            // Driver sudah ambil - ke halaman chat
+            router.push({
+              pathname: '/screens/customer/ScootFoodCustomer/FoodChat',
+              params: {
+                orderId: order.id,
+                userId: userId,
+                driverId: order.id_driver,
+                driverName: order.driver?.nama || 'Driver',
+                lokasiResto: order.lokasi_resto,
+                lokasiAntar: order.lokasi_tujuan,
+                biaya: order.biaya,
+              }
+            });
+          } else if (order.status === 'waiting_confirmation') {
+            // Menunggu konfirmasi customer
+            router.push({
+              pathname: '/screens/customer/ScootFoodCustomer/FoodValidasi',
+              params: { orderId: order.id, userId: userId }
+            });
+          } else if (order.status === 'waiting_payment') {
+            // Menunggu pembayaran
+            router.push({
+              pathname: '/screens/customer/ScootFoodCustomer/FoodChat',
+              params: { orderId: order.id, userId: userId }
+            });
+          }
+          return;
+        }
+      }
+
+      // Tidak ada pesanan aktif - buat pesanan baru
+      router.push({
+        pathname: '/screens/customer/ScootFoodCustomer/ReminderCekResto',
+        params: userParams
+      });
+    } catch (error) {
+      console.error('[HomeCustomer] ScootFood navigation error:', error);
+      Alert.alert('Error', 'Gagal membuka halaman ScootFood');
+    }
   };
 
-  const handleScootSend = () => {
-    Alert.alert('ScootSend', 'Fitur ScootSend Customer sedang dalam pengembangan 🚧');
+  const handleScootSend = async () => {
+    try {
+      if (userId && typeof userId === 'string') {
+        const result = await getActiveScootSendOrder(userId);
+        if (result.success && result.data) {
+          const order = result.data;
+          console.log('[HomeCustomer] Active ScootSend order found:', order.id);
+
+          if (order.status === 'validasi') {
+            router.push({
+              pathname: '/screens/customer/ScootSendCustomer/SendValidasi',
+              params: {
+                orderId: order.id,
+                userId: userId
+              }
+            });
+            return;
+          }
+
+          // Default: Go to chat (for waiting_driver, accepted, ongoing, etc)
+          const driverName = order.driver?.nama || 'Driver';
+          const driverId = order.id_driver || '';
+
+          router.push({
+            pathname: '/screens/customer/ScootSendCustomer/SendChat',
+            params: {
+              orderId: order.id,
+              userId: userId,
+              driverId: driverId,
+              driverName: driverName,
+              lokasiResto: order.lokasi_jemput_barang,
+              lokasiAntar: order.lokasi_tujuan,
+              biaya: order.harga,
+              detailBarang: order.detail_barang,
+              receiverName: order.nama_penerima,
+              receiverPhone: order.telepon_penerima
+            }
+          });
+          return;
+        }
+      }
+
+      router.push({
+        pathname: '/screens/customer/ScootSendCustomer/SendPilihLokasi',
+        params: userParams,
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Error', 'Gagal membuka halaman ScootSend');
+    }
   };
 
   const handleEditProfile = () => {
@@ -97,7 +236,7 @@ const HomeCustomer = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header Section */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.avatarContainer}
             onPress={() => setShowPreview(true)}
             activeOpacity={0.8}
@@ -116,11 +255,11 @@ const HomeCustomer = () => {
               />
             )}
           </TouchableOpacity>
-          
+
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>Hai, {displayName}!</Text>
             <Text style={styles.subGreeting}>Semangat kuliahnya hari ini 🔥</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.editButton}
               onPress={handleEditProfile}
               activeOpacity={0.7}
@@ -128,6 +267,39 @@ const HomeCustomer = () => {
               testID="edit-profile-button"
             >
               <Text style={styles.editText}>Edit Profil</Text>
+            </TouchableOpacity>
+
+            {/* DEBUG BUTTON: Click subGreeting to clear active orders */}
+            <TouchableOpacity
+              onPress={async () => {
+                Alert.alert(
+                  'DEBUG: Clear Active Orders',
+                  'Hapus semua pesanan nyangkut? Status akan diubah jadi cancelled.',
+                  [
+                    { text: 'Batal', style: 'cancel' },
+                    {
+                      text: 'Hapus',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          // Dynamic import to use the new function
+                          const { clearAllActiveOrdersCustomer } = await import('../../../src/utils/activeOrderChecker');
+                          if (userId && typeof userId === 'string') {
+                            await clearAllActiveOrdersCustomer(userId);
+                            Alert.alert('Sukses', 'Semua order aktif sudah di-clear. Coba pesan lagi.');
+                          }
+                        } catch (e) {
+                          console.error(e);
+                          Alert.alert('Error', 'Gagal clear order');
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+              style={{ marginTop: 10 }}
+            >
+              <Text style={{ fontSize: 10, color: 'red', opacity: 0.5 }}>[Debug: Clear Ghost Orders]</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -203,8 +375,8 @@ const HomeCustomer = () => {
           </View>
           <Text style={styles.navText}>Beranda</Text>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.replace({
             pathname: '/screens/customer/Riwayat_Customer',
@@ -217,8 +389,8 @@ const HomeCustomer = () => {
           </View>
           <Text style={styles.navText}>Riwayat</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.replace({
             pathname: '/screens/customer/TermsAndConditionCustomer',
@@ -241,26 +413,26 @@ const HomeCustomer = () => {
         onRequestClose={() => setShowPreview(false)}
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setShowPreview(false)}
           >
             <View style={styles.modalContent}>
               {currentImageUrl ? (
-                <Image 
+                <Image
                   source={{ uri: currentImageUrl }}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
               ) : (
-                <Image 
+                <Image
                   source={require('../../../assets/images/Passenger.png')}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
               )}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowPreview(false)}
               >

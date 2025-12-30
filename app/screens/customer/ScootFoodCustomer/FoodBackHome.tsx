@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,7 +7,9 @@ const FoodBackHome = () => {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
       <View style={styles.card}>
 
         {/* ✔ Ceklist Bulat */}
@@ -28,6 +30,7 @@ const FoodBackHome = () => {
 
       </View>
     </SafeAreaView>
+    </>
   );
 };
 

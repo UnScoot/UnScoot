@@ -1,7 +1,12 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "../../../../src/database/supabase";
+import { createFoodOrder } from '../../../../src/scootFoodCustomer/scootFoodMemesan';
+import { kirimNotifikasi } from '../../../../src/notifications/notifikasiregister';
+import { hasActiveOrderCustomer } from '../../../../src/utils/activeOrderChecker';
 
 interface OrderItem {
   id: string;
@@ -12,21 +17,74 @@ interface OrderItem {
 const IPhone16Chat = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
+  const userIdParam = params?.userId as string;
+  const nama = params?.nama;
   const currentLocation = params?.currentLocation || 'Lokasi saat ini';
   const restaurantLocation = params?.restaurantLocation || 'Lokasi resto';
-  
+  const fare = params?.fare ? parseInt(params.fare as string) : 5000;
+  // const distance = params?.distance || '0'; // Unused
+
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [resolvedUserId, setResolvedUserId] = React.useState<string>('');
+
+  // Resolve userId dari params, AsyncStorage, atau Supabase Auth
+  React.useEffect(() => {
+    const resolveUserId = async () => {
+      let finalUserId = userIdParam;
+
+      if (finalUserId) {
+        console.log('[FoodNotes] Using userId from params:', finalUserId);
+        setResolvedUserId(finalUserId);
+        return;
+      }
+
+      // Coba dari AsyncStorage
+      try {
+        const userSession = await AsyncStorage.getItem('userSession');
+        if (userSession) {
+          const session = JSON.parse(userSession);
+          finalUserId = session.params?.userId;
+          if (finalUserId) {
+            console.log('[FoodNotes] Using userId from AsyncStorage:', finalUserId);
+            setResolvedUserId(finalUserId);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('[FoodNotes] Error reading AsyncStorage:', e);
+      }
+
+      // Coba dari Supabase Auth
+      try {
+        const { data } = await supabase.auth.getUser();
+        finalUserId = data?.user?.id || '';
+        if (finalUserId) {
+          console.log('[FoodNotes] Using userId from Supabase Auth:', finalUserId);
+          setResolvedUserId(finalUserId);
+          return;
+        }
+      } catch (e) {
+        console.warn('[FoodNotes] Error getting user from Supabase:', e);
+      }
+
+      console.error('[FoodNotes] ❌ Could not resolve userId!');
+    };
+
+    resolveUserId();
+  }, [userIdParam]);
+
   const [orderItems, setOrderItems] = React.useState<OrderItem[]>([
     { id: '1', name: 'Ayam Geprek', quantity: '1' },
     { id: '2', name: 'Nila Bakar', quantity: '1' },
     { id: '3', name: 'Es Teh Manis', quantity: '2' },
   ]);
-  
+
   const [notes, setNotes] = React.useState('(ayam gepreknya pedas sedang, gak pakai kol)');
 
   const updateOrderItem = (id: string, field: 'name' | 'quantity', value: string) => {
     setOrderItems(items =>
-      items.map(item => 
+      items.map(item =>
         item.id === id ? { ...item, [field]: value } : item
       )
     );
@@ -42,87 +100,163 @@ const IPhone16Chat = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
 
-        {/* Main Card */}
-        <View style={styles.mainCard}>
-          {/* Title */}
-          <Text style={styles.mainTitle}>🍱  Mau makan apa dari resto ini?</Text>
+          {/* Main Card */}
+          <View style={styles.mainCard}>
+            {/* Title */}
+            <Text style={styles.mainTitle}>🍱  Mau makan apa dari resto ini?</Text>
 
-          {/* Restaurant & Delivery Info */}
-          <View style={styles.infoSection}>
-            <Text style={styles.infoText}>📍  {restaurantLocation}</Text>
-            <Text style={styles.infoText}>🏠  Antar ke: {currentLocation}</Text>
-          </View>
+            {/* Restaurant & Delivery Info */}
+            <View style={styles.infoSection}>
+              <Text style={styles.infoText}>📍  {restaurantLocation}</Text>
+              <Text style={styles.infoText}>🏠  Antar ke: {currentLocation}</Text>
+            </View>
 
-          {/* Order Details Card */}
-          <View style={styles.orderCard}>
-            {orderItems.map((item, index) => (
-              <View key={item.id} style={styles.orderItemRow}>
+            {/* Order Details Card */}
+            <View style={styles.orderCard}>
+              {orderItems.map((item, index) => (
+                <View key={item.id} style={styles.orderItemRow}>
+                  <TextInput
+                    style={styles.orderItemInput}
+                    placeholder="Nama item..."
+                    placeholderTextColor="#ccc"
+                    value={item.name}
+                    onChangeText={(text) => updateOrderItem(item.id, 'name', text)}
+                  />
+                  <TextInput
+                    style={styles.orderQtyInput}
+                    placeholder="Qty"
+                    placeholderTextColor="#ccc"
+                    value={item.quantity}
+                    onChangeText={(text) => updateOrderItem(item.id, 'quantity', text)}
+                    keyboardType="numeric"
+                  />
+                  {orderItems.length > 1 && (
+                    <TouchableOpacity onPress={() => removeOrderItem(item.id)}>
+                      <Text style={styles.removeText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addItemButton} onPress={addOrderItem}>
+                <Text style={styles.addItemText}>+ Tambah Item</Text>
+              </TouchableOpacity>
+
+              <View style={styles.notesInputContainer}>
+                <Text style={styles.notesLabel}>Catatan:</Text>
                 <TextInput
-                  style={styles.orderItemInput}
-                  placeholder="Nama item..."
+                  style={styles.notesInput}
+                  placeholder="(contoh: gak pakai kol, pedas sedang)"
                   placeholderTextColor="#ccc"
-                  value={item.name}
-                  onChangeText={(text) => updateOrderItem(item.id, 'name', text)}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
                 />
-                <TextInput
-                  style={styles.orderQtyInput}
-                  placeholder="Qty"
-                  placeholderTextColor="#ccc"
-                  value={item.quantity}
-                  onChangeText={(text) => updateOrderItem(item.id, 'quantity', text)}
-                  keyboardType="numeric"
-                />
-                {orderItems.length > 1 && (
-                  <TouchableOpacity onPress={() => removeOrderItem(item.id)}>
-                    <Text style={styles.removeText}>✕</Text>
-                  </TouchableOpacity>
-                )}
               </View>
-            ))}
-            
-            <TouchableOpacity style={styles.addItemButton} onPress={addOrderItem}>
-              <Text style={styles.addItemText}>+ Tambah Item</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.notesInputContainer}>
-              <Text style={styles.notesLabel}>Catatan:</Text>
-              <TextInput
-                style={styles.notesInput}
-                placeholder="(contoh: gak pakai kol, pedas sedang)"
-                placeholderTextColor="#ccc"
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-              />
             </View>
           </View>
-        </View>
 
-        {/* Continue Button */}
-        <TouchableOpacity 
-          style={styles.continueButton}
-          onPress={() => router.push({
-            pathname: '/screens/customer/ScootFoodCustomer/FoodMenungguDriver',
-            params: {
-              orderItems: JSON.stringify(orderItems),
-              notes: notes
-            }
-          } as any)}
-        >
-          <Text style={styles.continueButtonText}>Lanjutkan Pesanan</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Continue Button */}
+          <TouchableOpacity
+            style={[styles.continueButton, isLoading && { opacity: 0.6 }]}
+            disabled={isLoading}
+            onPress={async () => {
+              // Validasi order items
+              const validItems = orderItems.filter(item => item.name.trim().length > 0);
+              if (validItems.length === 0) {
+                Alert.alert('Error', 'Mohon tambahkan minimal 1 item pesanan');
+                return;
+              }
+
+              if (!resolvedUserId) {
+                Alert.alert('Error', 'User ID tidak ditemukan. Silakan login ulang.');
+                return;
+              }
+
+              setIsLoading(true);
+
+              try {
+                // Check for active orders first
+                const activeCheck = await hasActiveOrderCustomer(resolvedUserId) as any;
+                if (activeCheck.hasActive) {
+                  setIsLoading(false);
+                  Alert.alert(
+                    'Pesanan Aktif',
+                    `Kamu masih punya pesanan ${activeCheck.service} yang belum selesai. Selesaikan dulu sebelum pesan baru.`,
+                    [{ text: 'OK' }]
+                  );
+                  return;
+                }
+
+                console.log('[FoodNotes] Creating order for customer:', resolvedUserId);
+
+                // Create order di database
+                const result = await createFoodOrder({
+                  customerId: resolvedUserId,
+                  lokasiCustomer: currentLocation as string,
+                  lokasiResto: restaurantLocation as string,
+                  biaya: fare,
+                  orderItems: validItems,
+                  notes: notes
+                });
+
+                if (result.success) {
+                  console.log('[FoodNotes] Order created:', result.data);
+
+                  // Kirim notifikasi
+                  await kirimNotifikasi({
+                    title: 'Pesanan Dikirim',
+                    body: 'Pesanan ScootFood kamu sedang dicari driver. Tunggu sebentar ya!'
+                  });
+
+                  // Navigate ke halaman menunggu driver (replace to clean history)
+                  router.replace({
+                    pathname: '/screens/customer/ScootFoodCustomer/FoodMenungguDriver',
+                    params: {
+                      orderId: result.data.id,
+                      userId: resolvedUserId,
+                      nama: nama,
+                      lokasiCustomer: currentLocation,
+                      lokasiResto: restaurantLocation,
+                      biaya: fare,
+                      orderItems: JSON.stringify(validItems),
+                      notes: notes
+                    }
+                  } as any);
+                } else {
+                  console.error('[FoodNotes] Failed to create order:', result.error);
+                  Alert.alert('Error', 'Gagal membuat pesanan: ' + result.error);
+                }
+              } catch (error: unknown) {
+                console.error('[FoodNotes] Exception:', error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                Alert.alert('Error', 'Terjadi kesalahan: ' + errorMessage);
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.continueButtonText}>Lanjutkan Pesanan</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -295,5 +429,5 @@ const styles = StyleSheet.create({
 });
 
 export default IPhone16Chat;
-        				
+
 

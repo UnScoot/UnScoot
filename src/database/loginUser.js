@@ -1,5 +1,5 @@
 // Helper untuk login user dan cek status email konfirmasi
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 /**
  * Login user dan cek status email konfirmasi
@@ -8,7 +8,10 @@ import { supabase } from "./supabase";
  * @returns {Promise<{error?: string, user?: any, needsEmailConfirmation?: boolean}>}
  */
 export async function loginUser(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
   if (error) {
     return { error: error.message };
   }
@@ -23,13 +26,13 @@ export async function loginUser(email, password) {
     // error "Cannot find native module 'ExpoPushTokenManager'" pada
     // environment tanpa module native (mis. Expo Go).
     const { default: notifikasiregister } = await import(
-      /* webpackChunkName: "notifikasiregister" */ "../notifications/notifikasiregister"
+      /* webpackChunkName: "notifikasiregister" */ '../notifications/notifikasiregister'
     );
 
     // Panggil dan tunggu (notifikasi mungkin menampilkan Alert sebagai fallback)
     await notifikasiregister({
       title: 'Login Berhasil',
-      body: 'Selamat datang kembali! Anda telah berhasil login.'
+      body: 'Selamat datang kembali! Anda telah berhasil login.',
     });
   } catch (e) {
     console.warn('[loginUser] notifikasiregister failed:', e);

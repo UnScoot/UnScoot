@@ -1,206 +1,426 @@
-import { useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import MapWithRoute from '../../../../components/MapWithRoute';
+import { geocodeAddress } from '../../../../src/utils/routingService';
+
+const MapsImg = require("../../../../assets/images/maps.png");
 
 const ScootFoodCustMemilihLokasi = () => {
   const router = useRouter();
+  const { userId, nama } = useLocalSearchParams();
+
   const [currentLocation, setCurrentLocation] = React.useState('');
   const [restaurantLocation, setRestaurantLocation] = React.useState('');
-  
-  // Generate dummy fare based on inputs
-  const generateDummyFare = () => {
-    if (currentLocation.length > 0 && restaurantLocation.length > 0) {
-      return `Rp ${Math.floor(Math.random() * 50000) + 5000}`;
+  // const [isLoading, setIsLoading] = React.useState(false); // Unused
+  const currentRef = React.useRef<any>(null);
+  const restoRef = React.useRef<any>(null);
+
+  // State untuk maps dan harga
+  const [customerCoords, setCustomerCoords] = React.useState<{latitude: number; longitude: number} | null>(null);
+  const [restoCoords, setRestoCoords] = React.useState<{latitude: number; longitude: number} | null>(null);
+  const [calculatedPrice, setCalculatedPrice] = React.useState<number>(5000); // Default minimum
+  const [routeDistance, setRouteDistance] = React.useState<number | null>(null);
+  const [isGeocodingCustomer, setIsGeocodingCustomer] = React.useState(false);
+  const [isGeocodingResto, setIsGeocodingResto] = React.useState(false);
+
+  // Debounce timer refs
+  const customerTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // State untuk error geocoding
+  const [customerError, setCustomerError] = React.useState<string | null>(null);
+  const [restoError, setRestoError] = React.useState<string | null>(null);
+
+  // Geocode customer location dengan debounce
+  React.useEffect(() => {
+    if (customerTimerRef.current) {
+      clearTimeout(customerTimerRef.current);
     }
-    return 'Rp ...';
-  };
+
+    if (!currentLocation.trim()) {
+      setCustomerCoords(null);
+      setCustomerError(null);
+      return;
+    }
+
+    customerTimerRef.current = setTimeout(async () => {
+      setIsGeocodingCustomer(true);
+      setCustomerError(null);
+      console.log('[FoodPilihLokasi] Geocoding customer location:', currentLocation);
+      const result = await geocodeAddress(currentLocation);
+      if (result) {
+        console.log('[FoodPilihLokasi] Customer coords:', result);
+        setCustomerCoords(result);
+        setCustomerError(null);
+      } else {
+        setCustomerCoords(null);
+        setCustomerError('Lokasi tidak ditemukan');
+      }
+      setIsGeocodingCustomer(false);
+    }, 1000);
+
+    return () => {
+      if (customerTimerRef.current) {
+        clearTimeout(customerTimerRef.current);
+      }
+    };
+  }, [currentLocation]);
+
+  // Geocode restaurant location dengan debounce
+  React.useEffect(() => {
+    if (restoTimerRef.current) {
+      clearTimeout(restoTimerRef.current);
+    }
+
+    if (!restaurantLocation.trim()) {
+      setRestoCoords(null);
+      setRestoError(null);
+      return;
+    }
+
+    restoTimerRef.current = setTimeout(async () => {
+      setIsGeocodingResto(true);
+      setRestoError(null);
+      console.log('[FoodPilihLokasi] Geocoding resto location:', restaurantLocation);
+      const result = await geocodeAddress(restaurantLocation);
+      if (result) {
+        console.log('[FoodPilihLokasi] Resto coords:', result);
+        setRestoCoords(result);
+        setRestoError(null);
+      } else {
+        setRestoCoords(null);
+        setRestoError('Lokasi tidak ditemukan');
+      }
+      setIsGeocodingResto(false);
+    }, 1000);
+
+    return () => {
+      if (restoTimerRef.current) {
+        clearTimeout(restoTimerRef.current);
+      }
+    };
+  }, [restaurantLocation]);
+
+  // Handle route calculated callback dari MapWithRoute
+  const handleRouteCalculated = React.useCallback((distanceKm: number, _durationMinutes: number, price: number) => {
+    console.log('[FoodPilihLokasi] Route calculated:', { distanceKm, price });
+    setRouteDistance(distanceKm);
+    setCalculatedPrice(price);
+  }, []);
 
   const handleDetailPesanan = () => {
-    if (!currentLocation.trim() || !restaurantLocation.trim()) {
-      alert('Mohon isi lokasi saat ini dan lokasi resto');
+    if (!currentLocation.trim()) {
+      Alert.alert('Error', 'Masukkan lokasi pengantaran');
+      return;
+    }
+    if (!restaurantLocation.trim()) {
+      Alert.alert('Error', 'Masukkan lokasi resto');
       return;
     }
     
+    // Navigate ke FoodNotes untuk menambah detail pesanan
     router.push({
       pathname: '/screens/customer/ScootFoodCustomer/FoodNotes',
       params: {
+        userId: userId,
+        nama: nama,
         currentLocation: currentLocation,
         restaurantLocation: restaurantLocation,
-        fare: generateDummyFare()
+        fare: calculatedPrice.toString(),
+        distance: routeDistance?.toFixed(2) || '0'
       }
     } as any);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
+        {/* Header with Back Button */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Lokasi Saat Ini Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputIcon} />
-            <TextInput
-              style={styles.inputText}
-              placeholder="Lokasi saat ini..."
-              placeholderTextColor="#999"
-              value={currentLocation}
-              onChangeText={setCurrentLocation}
-            />
+        <View style={styles.content}>
+          {/* Lokasi Pengantaran (Customer) Input */}
+          <View style={styles.inputRow}>
+            <View style={styles.circle} />
+            <Pressable style={styles.inputBox} onPress={() => currentRef.current?.focus?.()}>
+              <TextInput
+                ref={currentRef}
+                style={styles.inputText}
+                placeholder="Lokasi pengantaran..."
+                placeholderTextColor="#999"
+                value={currentLocation}
+                onChangeText={setCurrentLocation}
+                autoFocus={true}
+                returnKeyType="next"
+                onSubmitEditing={() => restoRef.current?.focus?.()}
+              />
+              {isGeocodingCustomer && (
+                <ActivityIndicator size="small" color="#33cc66" style={{ marginLeft: 8 }} />
+              )}
+            </Pressable>
+            {customerError && <Text style={styles.errorText}>{customerError}</Text>}
           </View>
-        </View>
 
-        {/* Lokasi Resto Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputIcon} />
-            <TextInput
-              style={styles.inputText}
-              placeholder="Lokasi resto..."
-              placeholderTextColor="#999"
-              value={restaurantLocation}
-              onChangeText={setRestaurantLocation}
-            />
+          {/* Lokasi Resto Input */}
+          <View style={styles.inputRow}>
+            <View style={[styles.circle, { borderColor: '#fe95a3' }]} />
+            <Pressable style={[styles.inputBox, { borderColor: '#fe95a3' }]} onPress={() => restoRef.current?.focus?.()}>
+              <TextInput
+                ref={restoRef}
+                style={styles.inputText}
+                placeholder="Lokasi resto..."
+                placeholderTextColor="#999"
+                value={restaurantLocation}
+                onChangeText={setRestaurantLocation}
+                returnKeyType="done"
+              />
+              {isGeocodingResto && (
+                <ActivityIndicator size="small" color="#33cc66" style={{ marginLeft: 8 }} />
+              )}
+            </Pressable>
+            {restoError && <Text style={styles.errorText}>{restoError}</Text>}
           </View>
-        </View>
 
-        {/* Map Container */}
-        <View style={styles.mapContainer}>
-          <Image
-            style={styles.mapImage}
-            source={require('../../../../assets/images/maps.png')}
-            resizeMode="cover"
-          />
-        </View>
+          {/* Map Container */}
+          <View style={styles.mapCard}>
+            {restoCoords && customerCoords ? (
+              <MapWithRoute
+                origin={restoCoords}
+                destination={customerCoords}
+                originLabel={restaurantLocation || 'Resto'}
+                destinationLabel={currentLocation || 'Tujuan'}
+                onRouteCalculated={handleRouteCalculated}
+              />
+            ) : (
+              <View style={styles.mapInner}>
+                {isGeocodingCustomer || isGeocodingResto ? (
+                  <View style={styles.mapLoadingContainer}>
+                    <ActivityIndicator size="small" color="#33cc66" />
+                    <Text style={styles.mapLoadingText}>Mencari lokasi...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Image
+                      style={styles.mapImage}
+                      source={MapsImg}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.mapOverlay}>
+                      <Text style={styles.mapOverlayText}>
+                        Masukkan lokasi untuk melihat rute
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
 
-        {/* Ongkir Section */}
-        <View style={styles.ongkirContainer}>
-          <Text style={styles.ongkirLabel}>Ongkir</Text>
-          <Text style={styles.ongkirPrice}>{generateDummyFare()}</Text>
-        </View>
+          {/* Tarif Row */}
+          <View style={styles.tarifRow}>
+            <View style={styles.tarifPill}>
+              <Text style={styles.tarifLabel}>Ongkir</Text>
+              <Text style={styles.tarifValue}>
+                {routeDistance !== null 
+                  ? `Rp${calculatedPrice.toLocaleString('id-ID')} (${routeDistance.toFixed(1)} km)`
+                  : `Rp${calculatedPrice.toLocaleString('id-ID')}`
+                }
+              </Text>
+            </View>
+          </View>
 
-        {/* Detail Pesanan Button */}
-        <TouchableOpacity 
-          style={styles.detailButton}
-          onPress={handleDetailPesanan}
-        >
-          <Text style={styles.detailButtonText}>Detail Pesanan</Text>
-        </TouchableOpacity>
+          {/* Detail Pesanan Button */}
+          <TouchableOpacity 
+            style={[styles.detailButton, false && styles.detailButtonDisabled]}
+            onPress={handleDetailPesanan}
+            disabled={false}
+          >
+            {false ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.detailButtonText}>Detail Pesanan</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  headerRow: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingTop: 12,
+    paddingBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   backButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#33cc66",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-	marginTop: -20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#33cc66',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  backButtonText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#fff",
+  backArrow: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700'
   },
-  inputContainer: {
-    marginBottom: 16,
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 0,
+    alignItems: 'center'
   },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 12
+  },
+  circle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: "#33cc66",
-    borderRadius: 20,
+    borderColor: '#33cc66',
+    marginRight: 12
+  },
+  inputBox: {
+    flex: 1,
+    height: 46,
+    borderRadius: 34,
+    borderWidth: 1,
+    borderColor: '#33cc66',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-  },
-  inputIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#999",
-    marginRight: 12,
+    backgroundColor: '#fff'
   },
   inputText: {
-    fontSize: 14,
-    fontFamily: "Montserrat-Regular",
-    color: "#333",
-    flex: 1,
+    color: '#000',
+    fontSize: 16,
+    paddingVertical: 0,
+    flex: 1
   },
-  mapContainer: {
-    width: "100%",
-    height: 280,
-    borderRadius: 20,
-    backgroundColor: "rgba(51, 204, 102, 0.1)",
-    overflow: "hidden",
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: "rgba(51, 204, 102, 0.3)",
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 34,
+  },
+  mapCard: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+    backgroundColor: '#e6f8ea',
+    marginTop: 8,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  mapInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mapImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%'
   },
-  ongkirContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#33cc66",
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    marginBottom: 12,
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  ongkirLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Montserrat-SemiBold",
-    color: "#000",
+  mapOverlayText: {
+    color: '#fff',
+    fontSize: 12,
+    textAlign: 'center',
   },
-  ongkirPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "Montserrat-SemiBold",
-    color: "#000",
+  mapLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapLoadingText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#666',
+  },
+  tarifRow: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  tarifPill: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffd14a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18
+  },
+  tarifLabel: {
+    color: '#000',
+    fontSize: 16
+  },
+  tarifValue: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600'
   },
   detailButton: {
-    backgroundColor: "#fe95a3",
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#33cc66',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24
+  },
+  detailButtonDisabled: {
+    backgroundColor: '#99e6b3'
   },
   detailButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "Montserrat-Bold",
-    color: "#000",
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700'
   },
 });
 

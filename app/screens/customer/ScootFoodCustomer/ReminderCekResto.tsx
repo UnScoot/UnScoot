@@ -1,12 +1,26 @@
-import { useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ReminderCekResto = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { userId, nama, nim, email } = params;
+  
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.backArrow}>←</Text>
+      </TouchableOpacity>
+      
       <View style={styles.contentWrapper}>
         <View style={styles.mainCard}>
           {/* Icon */}
@@ -35,13 +49,17 @@ const ReminderCekResto = () => {
           {/* Button */}
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => router.push('/screens/customer/ScootFoodCustomer/FoodPilihLokasi')}
+            onPress={() => router.push({
+              pathname: '/screens/customer/ScootFoodCustomer/FoodPilihLokasi',
+              params: { userId, nama, nim, email }
+            })}
           >
             <Text style={styles.buttonText}>Sudah Cek, Lanjut Pesan</Text>
           </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
+    </>
   );
 };
 
@@ -51,6 +69,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
+  },
+  backButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(51, 204, 102, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  backArrow: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#145f15ff",
   },
   contentWrapper: {
     width: "100%",

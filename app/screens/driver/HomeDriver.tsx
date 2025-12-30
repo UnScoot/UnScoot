@@ -3,6 +3,9 @@ import * as React from 'react';
 import { BackHandler, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProfileImageUrl } from '../../../src/database/uploadProfileImage';
+import { getActiveOrderForDriver } from '../../../src/database/chatScootRide';
+import { getActiveOrderForDriver as getActiveScootFoodOrderDriver } from '../../../src/database/chatScootFood';
+import { getActiveOrderForDriver as getActiveScootSendOrderDriver } from '../../../src/database/chatScootSend';
 
 const HomeDriver = () => {
   const { nama, nim, email, jenisMotor, plat, userId, profileImageUrl } = useLocalSearchParams();
@@ -61,25 +64,119 @@ const HomeDriver = () => {
   };
 
   // Navigation handlers
-  const handleScootRide = () => {
-    router.push({
-      pathname: '/screens/driver/ScootRideDriver/Daftar_Pesanan_ScootRide_Off',
-      params: userParams
-    });
+  const handleScootRide = async () => {
+    try {
+      // Check if driver has active order
+      if (userId && typeof userId === 'string') {
+        const result = await getActiveOrderForDriver(userId);
+
+        if (result.success && result.data) {
+          // Ada pesanan aktif, langsung ke chat with maps
+          const order = result.data;
+          const customerName = order.customer?.nama || 'Customer';
+          const customerId = order.customer?.id || order.id_customer;
+
+          console.log('[HomeDriver] Found active order, navigating to chat with maps:', order.id);
+
+          router.push({
+            pathname: '/screens/driver/ScootRideDriver/RideDriverChat',
+            params: {
+              orderId: order.id,
+              customerId: customerId,
+              customerName: customerName,
+              pickup: order.lokasi_jemput,
+              destination: order.lokasi_tujuan,
+              userId: userId,
+              nama: nama,
+              nim: nim,
+              email: email,
+              jenisMotor: jenisMotor,
+              plat: plat
+            }
+          });
+          return;
+        }
+      }
+
+      // No active order, go to orders list
+      router.push({
+        pathname: '/screens/driver/ScootRideDriver/RideDaftarPesananOff',
+        params: userParams
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
-  const handleScootFood = () => {
-    router.push({
-      pathname: '/screens/driver/ScootFoodDriver/Daftar_Pesanan_ScootFood_Off',
-      params: userParams
-    });
+  const handleScootFood = async () => {
+    try {
+      if (userId && typeof userId === 'string') {
+        const result = await getActiveScootFoodOrderDriver(userId);
+        if (result.success && result.data) {
+          const order = result.data;
+          console.log('[HomeDriver] Active ScootFood order found:', order.id);
+
+          router.push({
+            pathname: '/screens/driver/ScootFoodDriver/FoodDriverChat',
+            params: {
+              orderId: order.id,
+              customerId: order.id_customer || order.customer?.id,
+              customerName: order.customer?.nama || 'Customer',
+              customerPhoto: order.customer?.profile_image_url,
+              restaurant: order.lokasi_resto,
+              lokasiAntar: order.lokasi_tujuan,
+              biaya: order.biaya,
+              orderItems: order.detail_pesanan,
+              ...userParams
+            }
+          });
+          return;
+        }
+      }
+
+      router.push({
+        pathname: '/screens/driver/ScootFoodDriver/FoodDaftarPesananOff',
+        params: userParams
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
-  const handleScootSend = () => {
-    router.push({
-      pathname: '/screens/driver/ScootSendDriver/Daftar_Pesanan_ScootSend_Off',
-      params: userParams
-    });
+  const handleScootSend = async () => {
+    try {
+      if (userId && typeof userId === 'string') {
+        const result = await getActiveScootSendOrderDriver(userId);
+        if (result.success && result.data) {
+          const order = result.data;
+          console.log('[HomeDriver] Active ScootSend order found:', order.id);
+
+          router.push({
+            pathname: '/screens/driver/ScootSendDriver/SendDriverChat',
+            params: {
+              orderId: order.id,
+              customerName: order.nama_pengirim,
+              customerPhone: order.telepon_pengirim,
+              lokasiJemput: order.lokasi_jemput_barang,
+              lokasiTujuan: order.lokasi_tujuan,
+              detailBarang: order.detail_barang,
+              biaya: order.harga,
+              receiverName: order.nama_penerima,
+              receiverPhone: order.telepon_penerima,
+              ...userParams
+            }
+          });
+          return;
+        }
+      }
+
+      router.push({
+        pathname: '/screens/driver/ScootSendDriver/SendDaftarPesananOff',
+        params: userParams
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   const handleEditProfile = () => {
@@ -109,7 +206,7 @@ const HomeDriver = () => {
         {/* Header Section */}
         <View style={styles.header}>
           {/* AVATAR - BISA DI KLIK UNTUK PREVIEW */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.avatarContainer}
             onPress={() => setShowPreview(true)}
             activeOpacity={0.8}
@@ -131,7 +228,7 @@ const HomeDriver = () => {
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>Hai, {displayName}!</Text>
             <Text style={styles.subGreeting}>Semangat ngeUnScoot hari ini 🥰</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.editButton}
               onPress={handleEditProfile}
               activeOpacity={0.7}
@@ -212,8 +309,8 @@ const HomeDriver = () => {
           </View>
           <Text style={styles.navText}>Beranda</Text>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={handleRiwayat}
           activeOpacity={0.7}
@@ -223,8 +320,8 @@ const HomeDriver = () => {
           </View>
           <Text style={styles.navText}>Riwayat</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={handleTerms}
           activeOpacity={0.7}
@@ -244,26 +341,26 @@ const HomeDriver = () => {
         onRequestClose={() => setShowPreview(false)}
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setShowPreview(false)}
           >
             <View style={styles.modalContent}>
               {currentImageUrl ? (
-                <Image 
+                <Image
                   source={{ uri: currentImageUrl }}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
               ) : (
-                <Image 
+                <Image
                   source={require('../../../assets/images/driver.png')}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
               )}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowPreview(false)}
               >
@@ -282,7 +379,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-    scrollContent: {
+  scrollContent: {
     flexGrow: 1,
     paddingBottom: 80,
   },

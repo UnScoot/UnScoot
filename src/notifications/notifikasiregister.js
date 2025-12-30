@@ -5,45 +5,44 @@ import { Alert, Platform, NativeModules } from 'react-native';
 
 function getNotifications() {
   try {
-    // Periksa NativeModules terlebih dahulu untuk menghindari memanggil
-    // require('expo-notifications') pada environment yang hanya menyediakan
-    // lapisan JS tetapi tidak memiliki native bridge. Memanggil require
-    // pada kasus tersebut dapat langsung melempar error "Cannot find native module ...".
-    if (Platform.OS !== 'web') {
-      const nativePresent =
-        Boolean(NativeModules?.ExpoPushTokenManager) ||
-        Boolean(NativeModules?.ExponentPushTokenManager) ||
-        Boolean(NativeModules?.ExpoNotifications);
+    console.log('getNotifications: Checking environment...');
+    console.log('getNotifications: Platform.OS:', Platform.OS);
+    console.log('getNotifications: NativeModules available:', !!NativeModules);
+    console.log(
+      'getNotifications: NativeModules keys:',
+      Object.keys(NativeModules || {})
+    );
 
-      if (!nativePresent) {
-        // Native bridge tidak ada — jangan require modul notifications
-        console.log('notifikasiregister: Native bridge tidak ada, fallback ke Alert/console');
+    // Coba require langsung dan lihat apakah berhasil
+    try {
+      console.log('getNotifications: Trying to require expo-notifications...');
+      const Notifications = require('expo-notifications');
+      console.log('getNotifications: expo-notifications loaded successfully');
+
+      // Test apakah API tersedia
+      const hasApi =
+        typeof Notifications.scheduleNotificationAsync === 'function';
+      console.log(
+        'getNotifications: scheduleNotificationAsync available:',
+        hasApi
+      );
+
+      if (hasApi) {
+        console.log('getNotifications: Native notifications available');
+        return Notifications;
+      } else {
+        console.log('getNotifications: API not available, fallback to Alert');
         return null;
       }
-    }
-
-    // Sekarang aman untuk me-require modul JS karena native bridge ada
-    // eslint-disable-next-line global-require
-    const Notifications = require('expo-notifications');
-
-    // Pastikan API yang kita pakai tersedia; beberapa versi/edge-cases
-    // mengekspos sebagian modul JS tanpa implementasi fungsi native.
-    const hasApi =
-      typeof Notifications.getPermissionsAsync === 'function' &&
-      typeof Notifications.requestPermissionsAsync === 'function' &&
-      typeof Notifications.scheduleNotificationAsync === 'function';
-
-    if (!hasApi) {
-      console.log('notifikasiregister: API tidak lengkap, fallback ke Alert/console');
+    } catch (requireError) {
+      console.log(
+        'getNotifications: Failed to require expo-notifications:',
+        requireError.message
+      );
       return null;
     }
-
-    console.log('notifikasiregister: Modul native tersedia, akan gunakan notifikasi native');
-    return Notifications;
   } catch (_err) {
-    // Jika require gagal, catat untuk debugging dan fallback ke null
-    // eslint-disable-next-line no-console
-    console.warn('notifikasiregister: getNotifications error', _err);
+    console.warn('getNotifications: Unexpected error', _err);
     return null;
   }
 }
@@ -53,7 +52,9 @@ export async function setupNotifications() {
   console.log('notifikasiregister: setupNotifications dipanggil');
   const Notifications = getNotifications();
   if (!Notifications) {
-    console.log('notifikasiregister: setupNotifications dilewati karena Notifications null');
+    console.log(
+      'notifikasiregister: setupNotifications dilewati karena Notifications null'
+    );
     return;
   }
 
@@ -67,15 +68,22 @@ export async function setupNotifications() {
     });
 
     if (Platform.OS !== 'web') {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       console.log('notifikasiregister: Permission status:', existingStatus);
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
-        console.log('notifikasiregister: Permission requested, status:', status);
+        console.log(
+          'notifikasiregister: Permission requested, status:',
+          status
+        );
       }
     }
 
-    if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
+    if (
+      Platform.OS === 'android' &&
+      Notifications.setNotificationChannelAsync
+    ) {
       const importance = Notifications.AndroidImportance?.HIGH ?? 4;
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Default',
@@ -108,23 +116,32 @@ async function notifikasiregister({
   }
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     console.log('notifikasiregister: permission status:', existingStatus);
     let finalStatus = existingStatus;
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
-      console.log('notifikasiregister: permission requested, final status:', finalStatus);
+      console.log(
+        'notifikasiregister: permission requested, final status:',
+        finalStatus
+      );
     }
 
     if (finalStatus !== 'granted') {
-      console.log('notifikasiregister: permission tidak diberikan, fallback ke Alert');
+      console.log(
+        'notifikasiregister: permission tidak diberikan, fallback ke Alert'
+      );
       Alert.alert(title, body);
       return;
     }
 
     try {
-      if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
+      if (
+        Platform.OS === 'android' &&
+        Notifications.setNotificationChannelAsync
+      ) {
         const importance = Notifications.AndroidImportance?.HIGH ?? 4;
         await Notifications.setNotificationChannelAsync('default', {
           name: 'Default',
@@ -154,3 +171,6 @@ async function notifikasiregister({
 }
 
 export default notifikasiregister;
+
+// Named export untuk kemudahan penggunaan
+export const kirimNotifikasi = notifikasiregister;
