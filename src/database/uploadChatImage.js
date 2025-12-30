@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Service Role Client - untuk upload Storage (bypass RLS)
-const SUPABASE_URL = "https://fghygbrmjatgmopywmlb.supabase.co";
-const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnaHlnYnJtamF0Z21vcHl3bWxiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTkxNzcwNSwiZXhwIjoyMDc1NDkzNzA1fQ.5zjmNkJTRluC3h_T7j7dsPelmms7JMecvceM33GD8K0";
+// Service Role Client - untuk upload Storage (bypass RLS)
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 /**

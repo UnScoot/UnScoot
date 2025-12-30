@@ -12,8 +12,8 @@ async function testBrevoSMTP() {
     port: 587,
     secure: false, // true for 465, false for other ports
     auth: {
-      user: '995168001@smtp-brevo.com', // ✅ FIXED: Was 9958600, now 995168001
-      pass: 'g1K3xhydvYJ2sSzb'
+      user: process.env.BREVO_SMTP_USER || '', // Load from .env
+      pass: process.env.BREVO_SMTP_PASS || ''  // Load from .env
     },
     debug: true, // Show debug logs
     logger: true // Show all logs
